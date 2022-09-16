@@ -2,4 +2,5 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-from .network import Network
+from .parse import Parser
+from .readonlydict import readonlydict
