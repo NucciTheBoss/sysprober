@@ -102,6 +102,7 @@ class _NetworkParser(Parser):
                     ).dict(),
                 }
             )
+        return ip_out
 
     def _addr_extract(self, a: Dict[str, Any]) -> Inet:
         """Extract address information about interfaces on the host.
