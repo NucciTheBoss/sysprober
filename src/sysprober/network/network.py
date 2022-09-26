@@ -96,9 +96,7 @@ class _NetworkParser(Parser):
                         address=i.get("address", None),
                         broadcast=i.get("broadcast", None),
                         link_netnsid=i.get("link_netnsid", None),
-                        addr_info=[
-                            self._addr_extract(a).dict() for a in i["addr_info"]
-                        ],
+                        addr_info=[self._addr_extract(a).dict() for a in i["addr_info"]],
                     ).dict(),
                 }
             )

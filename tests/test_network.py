@@ -6,6 +6,7 @@
 
 from sysprober.network import Network
 
+
 class TestNetwork:
     def test_get_info(self) -> None:
         net = Network()

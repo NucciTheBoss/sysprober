@@ -13,5 +13,5 @@ def readonlydict(func: Any) -> MappingProxyType:
     @wraps(func)
     def wrapper(*args, **kwargs):
         return MappingProxyType(func(*args, **kwargs))
-    
+
     return wrapper
