@@ -19,7 +19,7 @@ class Inet(BaseModel):
     family: str
     address: ipaddress.IPv4Address | ipaddress.IPv6Address
     prefixlen: int
-    broadcast: str | None
+    broadcast: ipaddress.IPv4Address | ipaddress.IPv6Address | None
     scope: str
     temporary: bool | None
     dynamic: str | None
@@ -39,49 +39,55 @@ class Interface(BaseModel):
     group: str
     txqlen: str
     link_type: str
-    address: str
-    broadcast: str
+    address: ipaddress.IPv4Address | ipaddress.IPv6Address | str
+    broadcast: ipaddress.IPv4Address | ipaddress.IPv6Address | str
     link_netnsid: int | None
     addr_info: List[Inet | str]
 
 
 class _NetworkParser(Parser):
     @readonlydict
-    def parse(self) -> Dict[str, Any]:
+    def parse(self, filter: bool = True) -> Dict[str, Any]:
         """An opinionated parser for globbing network information about the host.
 
         Returns:
             Dict[str, Any]: Network configuration of the host.
         """
-        return {
-            "hostname": self.get("hostname"),
-            "ifaces": self._filter(self._ip_parser(self.get("ip -j a"))),
+        result = {
+            "hostname": self._get("hostname"),
         }
 
-    def _filter(self, dirty: Dict[str, Any]) -> Dict[str, Any]:
-        """Filter out information that does not exist in host network.
+        if filter:
+            result.update({"ifaces": self._filter(self._ip_parser(self._get("ip -j a")))})
+        else:
+            result.update({"ifaces": self._ip_parser(self._get("ip -j a"))})
+
+        return result
+
+    def _filter(self, dirty: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Filter out information that does not exist in host network information.
 
         Args:
             dirty (Dict[str, Any]): Unclean network information.
             Contains settings that may not exist on host.
 
         Returns:
-            Dict[str, Any]: Filtered network information.
+            List[Dict[str, Any]]: Filtered network information.
         """
-        return {k: v for k, v in dirty.items() if v is not None}
+        return [self._filterdict(d) for d in dirty]
 
-    def _ip_parser(self, ip_in: str) -> Dict[str, Any]:
+    def _ip_parser(self, ip_in: str) -> List[Dict[str, Any]]:
         """Parse output from the Linux `ip` command.
 
         Args:
             ip_in (str): Captured output from the `ip` command.
 
         Returns:
-            Dict[str, Any]: Parsed output of `ip` command.
+            List[Dict[str, Any]]: Parsed output of `ip` command.
         """
-        ip_out = {}
+        ip_out = []
         for i in json.loads(ip_in):
-            ip_out.update(
+            ip_out.append(
                 {
                     "name": i.get("ifname", None),
                     "info": Interface(
@@ -131,7 +137,9 @@ class Network:
     def __init__(self) -> None:
         self.__parser = _NetworkParser()
         self.info = self.__parser.parse()
+        self.raw_info = self.__parser.parse(filter=False)
 
     def refresh(self) -> None:
         """Refresh host network information."""
         self.info = self.__parser.parse()
+        self.raw_info = self.__parser.parse(filter=False)
