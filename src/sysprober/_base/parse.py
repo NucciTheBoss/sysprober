@@ -54,3 +54,9 @@ class Parser(ABC):
         """
         out = subprocess.run(c.split(" "), capture_output=True, text=True)
         return out.stdout.strip("\n")
+
+
+class ParserException(Exception):
+    """Base exception for parser specific errors."""
+
+    pass
