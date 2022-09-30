@@ -7,7 +7,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="sysprober",
-    version="0.1.1",
+    version="0.1.2",
     description="Probe your Linux host for information about itself",
     author="Jason C. Nucciarone",
     author_email="jason.nucciarone@canonical.com",
