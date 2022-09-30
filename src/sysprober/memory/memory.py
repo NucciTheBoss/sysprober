@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import math
+from types import MappingProxyType
 from typing import Dict, List
 
 from sysprober._base import Parser, ParserException, readonlydict
@@ -51,10 +53,10 @@ class _MemoryParser(Parser):
         """Convert attribute to valid Python syntax.
 
         Args:
-            a (str): Unfiltered attribute
+            a (str): Unfiltered attribute.
 
         Returns:
-            str: Syntactically valid attribute
+            str: Syntactically valid attribute.
         """
         clip_paranthesis = lambda x: x[:-1] if x.endswith(")") else x
 
@@ -66,10 +68,10 @@ class _MemoryParser(Parser):
         """Flatten a list.
 
         Args:
-            l (List): A list with nested lists
+            l (List): A list with nested lists.
 
         Returns:
-            List: A flattened list
+            List: A flattened list.
         """
         flat = []
         for i in l:
@@ -85,14 +87,61 @@ class Memory:
     def __init__(self) -> None:
         self.__parser = _MemoryParser()
         self.__data = self.__parser.parse()
-        self.unit = "kB"
+        self.unit = "KiB"
         self.__mount()
+
+    @property
+    def _raw(self) -> MappingProxyType:
+        """Direct access to the parsed output from `/proc/meminfo`.
+
+        Returns:
+            MappingProxyType: Raw memory data.
+        """
+        return self.__data
+
+    def __calc(self, v: int | float, unit: str, floor: bool) -> int | float:
+        """Convert bytes to new unit of measure.
+
+        Args:
+            v (int | float): Value to convert.
+            unit (str): Unit of measure to convert to.
+            floor (bool): Floor the converted value to the nearest integer if True;
+            preserve original float if False.
+
+        Returns:
+            int | float: Converted value.
+        """
+        convert = lambda c, p: c * 1024 / math.pow(1024, p)
+        if unit == "mb":
+            return math.floor(convert(v, 2)) if floor else convert(v, 2)
 
     def __mount(self) -> None:
         """Mount properties onto class after parsing `/proc/meminfo`."""
         for k, v in self.__data.items():
             setattr(self, k, v)
 
+    def convert(self, unit: str = "MB", floor: bool = True) -> None:
+        """_summary_
+
+        Args:
+            unit (str, optional): Unit of measure to convert to. Defaults to "MB".
+            floor (bool, optional): Floor the converted value to the nearest integer if True;
+            preserve original float if False. Defaults to True.
+        """
+        blacklist = {"hugepages_total", "hugepages_free", "hugepages_rsvd", "hugepages_surp"}
+        holder = dict(self.__data)
+        for k, v in holder.items():
+            if k not in blacklist:
+                holder.update({k: self.__calc(v, unit.lower(), floor)})
+        self.__data = MappingProxyType(holder)
+        self.unit = unit
+        self.__mount()
+
     def refresh(self) -> None:
+        """Refresh current memory information by reparsing `/proc/meminfo`.
+
+        Warnings:
+            Resets current unit to KiB (kibibyte). Conversions will need to be reapplied.
+        """
         self.__data = self.__parser.parse()
         self.__mount()
